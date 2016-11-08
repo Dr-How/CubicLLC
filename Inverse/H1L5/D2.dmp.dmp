@@ -1,0 +1,19 @@
+// H1L5/D2.dmp.dmp: Dump of structure.
+
+// datafilename: H1L5/D2.dmp
+vertices_predicted     74890
+edges_predicted       247345
+facets_predicted      147457
+facetedges_predicted  442369
+bodies_predicted           3
+quantities_predicted            9
+method_instances_predicted     12
+// Total energy: 0.00115399283498594
+SOAPFILM
+
+LINEAR
+
+SCALE: 0.0647717605244633
+
+
+// Function and procedure prototypes

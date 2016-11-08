@@ -1,0 +1,72 @@
+// volume 2/3
+symmetric_content
+parameter showrhombic = "abcabc"
+
+CONSTRAINT 1 // top
+FUNCTION:  x + z - 2
+content:
+c1: (y+1)/3
+c2: (1-x)/3
+c3: 0
+
+CONSTRAINT 2 // right
+FUNCTION:  y - x
+
+CONSTRAINT 3 // left
+FUNCTION:  x + y
+
+CONSTRAINT 4 // down
+FUNCTION:  x - z
+
+// top face of the prism
+// this is inside the prism
+VIEW_TRANSFORM_GENERATORS 3 
+// a: x-y=0, inside
+0 1 0 0
+1 0 0 0
+0 0 1 0
+0 0 0 1
+
+// b: x+y=0, back
+0  -1  0  0
+-1   0  0  0
+0   0  1  0
+0   0  0  1
+
+// c: x-z=0, front
+0 0 1 0
+0 1 0 0
+1 0 0 0
+0 0 0 1
+
+// quantity helfrich info_only method sq_gauss_curvature global
+
+vertices
+1 1   0    1   constraints 1 4 fixed
+2 0.5 0.5  0.5 constraints 2 4
+3 0   0    1   constraints 2 3 fixed
+4 0.5 -0.5 1.5 constraint  3 1
+5 0   0    0   fixed       bare
+6 1   -1   1   fixed       bare
+7 0   0    2   fixed       bare
+8 1   1    1   fixed       bare
+
+edges  
+1   1  2  color  red   constraints  4
+2   2  3  color  red   constraints  2
+3   3  4  color  blue  constraints  3
+4   4  1  color  blue  constraints  1
+11  1  3  fixed
+5   5  6  fixed  bare  no_refine
+6   5  7  fixed  bare  no_refine
+7   5  8  fixed  bare  no_refine
+8   7  6  fixed  bare  no_refine
+9   7  8  fixed  bare  no_refine
+10  6  8  fixed  bare  no_refine
+
+faces
+1  1  2 -11
+2  3  4 11
+
+bodies
+1 1 2 volume 1/3

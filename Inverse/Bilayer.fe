@@ -1,0 +1,152 @@
+// To get CMC surfaces, change FrustL to info_only.
+// In case of inexact result, try evolve on some intermediate values.
+// A lesson: u will increase energy!!
+// "normal_motion" sucks! Why?
+quantity FrustL energy modulus 1 method hooke_energy
+quantity FrustH energy modulus 1 method star_perp_sq_mean_curvature
+quantity TotalH info_only modulus 1 method mean_curvature_integral
+quantity TotalA info_only modulus 1 method facet_area
+
+parameter hooke_length = 0;
+parameter h_zero = 0;
+parameter water = 1;
+
+vertices
+
+edges
+
+faces
+
+read
+
+hessian_normal
+conj_grad
+check_increase
+
+Initial := { r; g 10; u; hessian_seek; V; }
+
+Bilayer := {
+	define vertex attribute pos_v integer;
+	define vertex attribute neg_v integer;
+	define edge attribute pos_e integer;
+	define edge attribute neg_e integer;
+	define face attribute pos_f integer;
+	define face attribute neg_f integer;
+
+	l_zero:= 0.0001;
+
+	foreach vertex vv where not bare do {
+		vv.pos_v := new_vertex(vv.x[1]+l_zero*vv.vertex_normal[1], vv.x[2]+l_zero*vv.vertex_normal[2], vv.x[3]+l_zero*vv.vertex_normal[3]);
+		set vertex[vv.pos_v] quantity FrustH;
+		vv.neg_v := new_vertex(vv.x[1]-l_zero*vv.vertex_normal[1], vv.x[2]-l_zero*vv.vertex_normal[2], vv.x[3]-l_zero*vv.vertex_normal[3]);
+		set vertex[vv.neg_v] quantity FrustH;
+		if not torus then
+		for (cons:=2; cons<=vv.v_constraint_list[1]+1; cons++) {
+			set vertex[vv.pos_v] constraint vv.v_constraint_list[cons] imod 0x100000;
+			set vertex[vv.neg_v] constraint vv.v_constraint_list[cons] imod 0x100000;
+		};
+		fix vv;
+		unset vv quantity FrustH;
+		spring_v := new_edge(vv.pos_v, vv.neg_v);
+		set edge[spring_v] no_refine;
+		set edge[spring_v] bare;
+		set edge[spring_v] quantity FrustL;
+	};
+
+	foreach edge ee where not bare do {
+		ee.pos_e := new_edge(ee.vertex[1].pos_v, ee.vertex[2].pos_v);
+		set edge[ee.pos_e] quantity TotalH;
+		set edge[ee.pos_e] wrap ee.wrap;
+		ee.neg_e := new_edge(ee.vertex[1].neg_v, ee.vertex[2].neg_v);
+		set edge[ee.neg_e] quantity TotalH;
+		set edge[ee.neg_e] wrap ee.wrap;
+		if not torus then
+		for (cons:=2; cons<=ee.e_constraint_list[1]+1; cons++) {
+			set edge[ee.pos_e] constraint ee.e_constraint_list[cons] imod 0x100000;
+			set edge[ee.neg_e] constraint ee.e_constraint_list[cons] imod 0x100000;
+		};
+		fix ee;
+	};
+
+  dissolve bodies;
+	/* pos_b := new_body; */
+	/* neg_b := new_body; */
+	mid_b := new_body;
+
+	foreach facet ff do {
+		ff.pos_f := new_facet(ff.edge[1].oid*ff.edge[1].pos_e/ff.edge[1].id, ff.edge[2].oid*ff.edge[2].pos_e/ff.edge[2].id, ff.edge[3].oid*ff.edge[3].pos_e/ff.edge[3].id);
+		set facet[ff.pos_f] density 0;
+		set facet[ff.pos_f] quantity TotalA;
+		set facet[ff.pos_f] backcolor red;
+		set facet[ff.pos_f] frontcolor yellow;
+		set facet[ff.pos_f] frontbody mid_b;
+		ff.neg_f := new_facet(-ff.edge[3].oid*ff.edge[3].neg_e/ff.edge[3].id, -ff.edge[2].oid*ff.edge[2].neg_e/ff.edge[2].id, -ff.edge[1].oid*ff.edge[1].neg_e/ff.edge[1].id);
+		set facet[ff.neg_f] density 0;
+		set facet[ff.neg_f] quantity TotalA;
+		set facet[ff.neg_f] backcolor red;
+		set facet[ff.neg_f] frontcolor yellow;
+		set facet[ff.neg_f] frontbody mid_b;
+		fix ff;
+		set ff density 0;
+		set ff color lightblue;
+	};
+
+  show edge where bare and fixed;
+};
+
+expname := "result";
+Q_size:=2; // 2 for P and D, 8 for G.
+V_patch:=1/6; // 1/6 for P, 2/3 for D, 256 for G.
+
+kL:=1;
+kH:=1;
+
+Evolve := {
+	g 5; hessian_seek;
+	hooke_length := avg(edge where on_quantity FrustL, length);
+	h_zero := avg(vertex where on_quantity FrustH, mean_curvature);
+	FrustL.modulus := kL / sum(edge where on_quantity FrustL, 1) / 4 / Q_size^2;
+	// explanation of / 4:
+	// The length of Shearman is half of the length here.
+	FrustH.modulus := kH / sum(vertex where on_quantity FrustH, 1) * Q_size^2;
+	recalc;
+	print hooke_length;
+	histogram(edge where on_quantity FrustL, length);
+	print h_zero;
+	histogram(vertex where on_quantity FrustH, mean_curvature);
+}
+
+PROCEDURE EvolveTo (real frac) {
+	set body[1] target V_patch*frac;
+	/* set body[3] target V_patch/2*(1-frac); */
+	foreach face ff where fixed do {
+		set face[ff.pos_f] density 1;
+		set face[ff.neg_f] density 1;
+	};
+	u 10;
+	{Evolve} 5;
+	foreach face ff where fixed do {
+		set face[ff.pos_f] density 0;
+		set face[ff.neg_f] density 0;
+	};
+	u 10;
+	{Evolve} 10;
+	v;
+}
+
+run := {
+	g; hessian_seek;
+	outputfile:=sprintf "%s.dat",expname;
+	for(fr:=0; fr<0.5; fr+=0.1) {
+		for(ac:=0.01; ac<=0.1; ac+=0.01) {
+			EvolveTo(fr+ac);
+			printf "%.2f %e %e %e %e %e\n", 1-fr-ac, hooke_length/Q_size/2, FrustL.value, h_zero*Q_size, FrustH.value, total_energy >> outputfile;
+			// Attention, factor to keep cube length a=1;
+			// multiply for FrustH, divide for FrustL
+		};
+		dmpfile:=sprintf "%s%d.dmp",expname,fr*10;
+		dump dmpfile;
+	};
+}
+
+reload := {load "Bilayer.fe";}

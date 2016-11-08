@@ -1,0 +1,249 @@
+quantity FrustL info_only modulus 1 method hooke_energy
+quantity FrustH energy modulus 1 method star_perp_sq_mean_curvature
+quantity TotalH info_only modulus 1 method mean_curvature_integral
+quantity TotalA info_only modulus 1 method facet_area
+
+symmetric_content
+parameter showrhombic = "abcabc"
+
+CONSTRAINT 1 // top
+FUNCTION:  x + z - 2
+content:
+c1: (y+1)/3
+c2: (1-x)/3
+c3: 0
+
+CONSTRAINT 2 // right
+FUNCTION:  y - x
+
+CONSTRAINT 3 // left
+FUNCTION:  x + y
+
+CONSTRAINT 4 // down
+FUNCTION:  x - z
+
+// top face of the prism
+// this is inside the prism
+VIEW_TRANSFORM_GENERATORS 3 
+// a: x-y=0, inside
+0 1 0 0
+1 0 0 0
+0 0 1 0
+0 0 0 1
+
+// b: x+y=0, back
+0  -1  0  0
+-1   0  0  0
+0   0  1  0
+0   0  0  1
+
+// c: x-z=0, front
+0 0 1 0
+0 1 0 0
+1 0 0 0
+0 0 0 1
+
+// quantity helfrich info_only method sq_gauss_curvature global
+
+vertices
+1 1   0    1   constraints 1 4 fixed
+2 0.5 0.5  0.5 constraints 2 4
+3 0   0    1   constraints 2 3 fixed
+4 0.5 -0.5 1.5 constraint  3 1
+5 0   0    0   fixed       bare
+6 1   -1   1   fixed       bare
+7 0   0    2   fixed       bare
+8 1   1    1   fixed       bare
+
+edges  
+1   1  2  color  red   constraints  4
+2   2  3  color  red   constraints  2
+3   3  4  color  blue  constraints  3
+4   4  1  color  blue  constraints  1
+11  1  3  fixed
+5   5  6  fixed  bare  no_refine
+6   5  7  fixed  bare  no_refine
+7   5  8  fixed  bare  no_refine
+8   7  6  fixed  bare  no_refine
+9   7  8  fixed  bare  no_refine
+10  6  8  fixed  bare  no_refine
+
+faces
+1  1  2 -11
+2  3  4 11
+
+bodies
+1 1 2 volume 1/3
+
+read
+
+define vertex attribute pos_v integer;
+define vertex attribute neg_v integer;
+
+Initial := { r; g 10; u; hessian_seek; V; }
+
+Bilayer := {
+	define vertex attribute pos_m integer;
+	define vertex attribute neg_m integer;
+	define vertex attribute pos_v integer;
+	define vertex attribute neg_v integer;
+	define edge attribute pos_e integer;
+	define edge attribute neg_e integer;
+	define face attribute pos_f integer;
+	define face attribute neg_f integer;
+
+	foreach vertex vv where not bare do {
+		vv.pos_v := new_vertex(vv.x[1], vv.x[2], vv.x[3]);
+		set vertex[vv.pos_v] quantity FrustH;
+		dist := 10;
+		flag := 0;
+		for(cons := 1; cons < 3; cons++) {
+			if vv.on_constraint cons then {
+				flag:=cons;
+				vv.pos_m:=0;
+			};
+			if flag == 0 then {
+				old_value := vv.value_of_constraint cons;
+				test_v := new_vertex(vv.x[1]+vv.vertex_normal[1], vv.x[2]+vv.vertex_normal[2], vv.x[3]+vv.vertex_normal[3]);
+				new_value := vertex[test_v].value_of_constraint cons;
+				cons_dist := old_value / (old_value - new_value);
+				if cons_dist > 0 and cons_dist < dist then {
+					dist := cons_dist;
+					vertex[test_v].x[1]:=vv.x[1]+dist*vv.vertex_normal[1];
+					vertex[test_v].x[2]:=vv.x[2]+dist*vv.vertex_normal[2];
+					vertex[test_v].x[3]:=vv.x[3]+dist*vv.vertex_normal[3];
+					vv.pos_m := test_v;
+				};
+			};
+		};
+		if vv.pos_m > 0 then {
+			fix vertex[vv.pos_m];
+			pos_spring := new_edge(vv.pos_v, vv.pos_m);
+			set edge[pos_spring] no_refine;
+			set edge[pos_spring] bare;
+			set edge[pos_spring] quantity FrustL;
+		};
+
+		vv.neg_v := new_vertex(vv.x[1], vv.x[2], vv.x[3]);
+		set vertex[vv.neg_v] quantity FrustH;
+		dist := 10;
+		flag := 0;
+		for(cons := 3; cons < 5; cons++) {
+			if vv.on_constraint cons then {
+				flag:=cons;
+				vv.neg_m:=0;
+			};
+			if flag == 0 then {
+				old_value := vv.value_of_constraint cons;
+				test_v := new_vertex(vv.x[1]-vv.vertex_normal[1], vv.x[2]-vv.vertex_normal[2], vv.x[3]-vv.vertex_normal[3]);
+				new_value := vertex[test_v].value_of_constraint cons;
+				cons_dist := old_value / (old_value - new_value);
+				if cons_dist > 0 and cons_dist < dist then {
+					dist := cons_dist;
+					vertex[test_v].x[1]:=vv.x[1]-dist*vv.vertex_normal[1];
+					vertex[test_v].x[2]:=vv.x[2]-dist*vv.vertex_normal[2];
+					vertex[test_v].x[3]:=vv.x[3]-dist*vv.vertex_normal[3];
+					vv.neg_m := test_v;
+				};
+			};
+		};
+		if vv.neg_m > 0 then {
+			fix vertex[vv.neg_m];
+			neg_spring := new_edge(vv.neg_v, vv.neg_m);
+			set edge[neg_spring] no_refine;
+			set edge[neg_spring] bare;
+			set edge[neg_spring] quantity FrustL;
+		};
+
+		if not torus then
+		for (cons:=2; cons<=vv.v_constraint_list[1]+1; cons++) {
+			set vertex[vv.pos_v] constraint vv.v_constraint_list[cons] imod 0x100000;
+			set vertex[vv.neg_v] constraint vv.v_constraint_list[cons] imod 0x100000;
+		};
+
+		fix vv;
+		unset vv quantity FrustH;
+	};
+
+	foreach edge ee where not bare do {
+		ee.pos_e := new_edge(ee.vertex[1].pos_v, ee.vertex[2].pos_v);
+		set edge[ee.pos_e] quantity TotalH;
+		set edge[ee.pos_e] wrap ee.wrap;
+		ee.neg_e := new_edge(ee.vertex[1].neg_v, ee.vertex[2].neg_v);
+		set edge[ee.neg_e] quantity TotalH;
+		set edge[ee.neg_e] wrap ee.wrap;
+		if not torus then
+		for (cons:=2; cons<=ee.e_constraint_list[1]+1; cons++) {
+			set edge[ee.pos_e] constraint ee.e_constraint_list[cons] imod 0x100000;
+			set edge[ee.neg_e] constraint ee.e_constraint_list[cons] imod 0x100000;
+		};
+		fix ee;
+	};
+
+  dissolve bodies;
+	/* pos_b := new_body; */
+	/* neg_b := new_body; */
+	mid_b := new_body;
+
+	foreach facet ff do {
+		ff.pos_f := new_facet(ff.edge[1].oid*ff.edge[1].pos_e/ff.edge[1].id, ff.edge[2].oid*ff.edge[2].pos_e/ff.edge[2].id, ff.edge[3].oid*ff.edge[3].pos_e/ff.edge[3].id);
+		set facet[ff.pos_f] density 0;
+		set facet[ff.pos_f] quantity TotalA;
+		set facet[ff.pos_f] backcolor red;
+		set facet[ff.pos_f] frontcolor yellow;
+		set facet[ff.pos_f] frontbody mid_b;
+		ff.neg_f := new_facet(-ff.edge[3].oid*ff.edge[3].neg_e/ff.edge[3].id, -ff.edge[2].oid*ff.edge[2].neg_e/ff.edge[2].id, -ff.edge[1].oid*ff.edge[1].neg_e/ff.edge[1].id);
+		set facet[ff.neg_f] density 0;
+		set facet[ff.neg_f] quantity TotalA;
+		set facet[ff.neg_f] backcolor red;
+		set facet[ff.neg_f] frontcolor yellow;
+		set facet[ff.neg_f] frontbody mid_b;
+		fix ff;
+		set ff density 0;
+		set ff color lightblue;
+	};
+}
+
+expname := "D"
+Q_size:=2; // 2 for P and D, 8 for G.
+V_patch:=2/3; // 1/6 for P, 2/3 for D, 256 for G.
+
+kL:=1;
+kH:=1;
+
+Evolve := {
+	g 5; hessian_seek;
+	hooke_length := avg(edge where on_quantity FrustL, length);
+	h_zero := avg(vertex where on_quantity FrustH, mean_curvature);
+	FrustL.modulus := kL / sum(edge where on_quantity FrustL, 1) / Q_size^2;
+	FrustH.modulus := kH / sum(vertex where on_quantity FrustH, 1) * Q_size^2;
+	recalc;
+	print hooke_length;
+	histogram(edge where on_quantity FrustL, length);
+	print h_zero;
+	histogram(vertex where on_quantity FrustH, mean_curvature);
+}
+
+PROCEDURE EvolveTo (real frac) {
+	set body[2] target V_patch*frac;
+	u 10;
+	{Evolve} 20;
+	v;
+}
+
+run := {
+	{initial;} 5;
+	g; hessian_seek;
+	bilayer;
+	outputfile:=sprintf "%s.dat",expname;
+	for(fr:=0; fr<0.5; fr+=0.1) {
+		for(ac:=0.01; ac<=0.1; ac+=0.01) {
+			EvolveTo(fr+ac);
+			printf "%.2f %e %e %e %e %e\n", fr+ac, hooke_length/Q_size/2, FrustL.value, h_zero*Q_size, FrustH.value, total_energy >> outputfile;
+			// Attention, factor to keep cube length a=1;
+			// multiply for FrustH, divide for FrustL
+		};
+		dmpfile:=sprintf "%s%d.dmp",expname,fr*10;
+		dump dmpfile;
+	};
+}

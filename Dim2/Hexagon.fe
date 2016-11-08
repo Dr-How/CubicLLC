@@ -1,0 +1,95 @@
+// To get CMC surfaces, change FrustL to info_only.
+// In case of inexact result, try evolve on some intermediate values.
+// A lesson: u will increase energy!!
+// "normal_motion" sucks! Why?
+STRING
+SPACE_DIMENSION 2
+
+define edge attribute sqcurve_string_mark integer	
+quantity FrustL energy modulus 1 method hooke_energy
+quantity FrustH energy modulus 1 method sqcurve_string_marked global
+
+parameter hooke_length = 0;
+parameter h_zero = 0;
+parameter water = 1;
+
+constraint 1
+formula:  sin(48*atan2(y,x)) 
+
+vertices
+1 cos(0) sin(0)
+2 cos(pi/3) sin(pi/3)
+3 cos(2*pi/3) sin(2*pi/3)
+4 cos(3*pi/3) sin(3*pi/3)
+5 cos(4*pi/3) sin(4*pi/3)
+6 cos(5*pi/3) sin(5*pi/3)
+
+edges
+1 1 2 sqcurve_string_mark 1 color red
+2 2 3 sqcurve_string_mark 1 color red
+3 3 4 sqcurve_string_mark 1 color red
+4 4 5 sqcurve_string_mark 1 color red
+5 5 6 sqcurve_string_mark 1 color red
+6 6 1 sqcurve_string_mark 1 color red
+
+faces
+1 1 2 3 4 5 6
+
+bodies
+1 1
+
+read
+
+r 4;
+set vertices constraint 1;
+
+define vertex attribute pos_v integer;
+define vertex attribute spring_v integer;
+define edge attribute pos_e integer;
+define edge attribute ps_linewidth real;
+check_increase;
+conj_grad;
+hessian_normal;
+hooke_length := 0;
+set edges ps_linewidth 0.005;
+
+foreach vertex vv do {
+	vv.pos_v := new_vertex(vv.x[1]*1.001, vv.x[2]*1.001);
+	fix vertex[vv.pos_v];
+	vv.spring_v := new_edge(vv.pos_v, vv.id);
+	set edge[vv.spring_v] no_refine;
+	set edge[vv.spring_v] bare;
+	set edge[vv.spring_v] quantity FrustL;
+	set edge[vv.spring_v] color 8;
+	set edge[vv.spring_v] ps_linewidth 0.003;
+	set edge[vv.spring_v] sqcurve_string_mark 0;
+};
+
+/* mid_b := new_body; */
+
+/* foreach edge ee where not on_quantity FrustL do { */
+/* 	ee.pos_e := new_edge(ee.vertex[1].pos_v, ee.vertex[2].pos_v); */
+/* 	set edge[ee.pos_e].sqcurve_string_mark 1; */
+/* 	fix ee; */
+/* 	mid_f := new_facet(ee.pos_e, ee.vertex[2].spring_v, -ee.id, -ee.vertex[1].spring_v); */
+/* 	set facet[mid_f] backbody mid_b; */
+/* 	set ee.density 0; */
+/* }; */
+
+set body[1] target 6*sqrt(3)/4/2
+set edges where sqcurve_string_mark=1 density 1;
+frusth.modulus:=0;
+frustl.modulus:=0;
+g 1000;
+hessian_seek; hessian_seek;
+
+frusth.modulus:=1;
+frustl.modulus:=1000;
+{
+{
+	hooke_length := avg(edge where on_quantity FrustL, length);
+	g;
+} 100;
+hessian_seek; hessian_seek;
+} 10;
+
