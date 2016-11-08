@@ -1,7 +1,7 @@
-// To get CMC surfaces, change FrustL to info_only.
-// In case of inexact result, try evolve on some intermediate values.
-// A lesson: u will increase energy!!
-// "normal_motion" sucks! Why?
+// Model for inverse hexagonal phase.
+
+// Author: Hao Chen <hao.chen.math@gmail.com>
+
 STRING
 SPACE_DIMENSION 2
 

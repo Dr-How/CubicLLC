@@ -1,7 +1,7 @@
-// To get CMC surfaces, change FrustL to info_only.
-// In case of inexact result, try evolve on some intermediate values.
-// A lesson: u will increase energy!!
-// "normal_motion" sucks! Why?
+// Model for inverse cubic phases.
+
+// Author: Hao Chen <hao.chen.math@gmail.com>
+
 quantity FrustL energy modulus 1 method hooke_energy
 quantity FrustH energy modulus 1 method star_perp_sq_mean_curvature
 quantity TotalH info_only modulus 1 method mean_curvature_integral

@@ -1,3 +1,8 @@
+// Datafile for a patch of the minimal D surface.
+// Adapted from the datafile prepared by Brakke.
+
+// Author: Hao Chen <hao.chen.math@gmail.com>
+
 // volume 2/3
 symmetric_content
 parameter showrhombic = "abcabc"

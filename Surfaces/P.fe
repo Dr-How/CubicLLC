@@ -1,3 +1,9 @@
+// iwp.fe
+
+// fundamental cell for Schoen's IW-P minimal surface
+
+// Author: Ken Brakke, brakke@susqu.edu, http://www.susqu.edu
+
 parameter showcube = "dcbdcbdcb"
 
 constraint 1   // top

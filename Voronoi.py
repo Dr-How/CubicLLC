@@ -1,3 +1,7 @@
+# Find points on the medial surface from the Voronoi vertices.
+
+# Author: Hao Chen <hao.chen.math@gmail.com>
+
 import numpy as np
 from scipy.spatial import Voronoi
 
